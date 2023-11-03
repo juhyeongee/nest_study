@@ -1,4 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { PostsModel } from './entities/posts.entity';
+import { Repository } from 'typeorm';
 
 export interface PostModel {
     id: number;
@@ -10,77 +13,66 @@ export interface PostModel {
   }
   //nest g resouce를 통해 만듦
   
-  let posts: PostModel[] = [
-    {
-      id:1 ,
-      author: 'newjeans_official',
-      title: '뉴진스 민지',
-      content : '메이크업 고치는 민지',
-      likeCount : 100000,
-      commentCount : 99999,
-    },
-    {
-      id: 2 ,
-      author: 'newjeans_official',
-      title: '뉴진스 해린',
-      content : '노래연습하는 해린',
-      likeCount : 100000,
-      commentCount : 99999,
-    },
-    {
-      id: 3 ,
-      author: 'blackpink_official',
-      title: '로제',
-      content : '공연하는 로제',
-      likeCount : 100000,
-      commentCount : 99999,
-    }
-  
-  ]
 
 @Injectable()
 export class PostsService {
 
-    getAllPosts(){
-        return posts;
+  constructor(
+    @InjectRepository(PostsModel)
+    private readonly postsRepository: Repository<PostsModel>
+    //레포지토리는 원하는 모델을 기반으로 데이터베이스와 소통하는 역할이다.
+  ){}
+
+    async getAllPosts(){
+      //모든 repository의 함수는 비동기임 그래서 async 
+      return this.postsRepository.find();
+      //find - 특정 조건에 해당되는 모든 정보를 반환한다.
     }
 
-    getPostById(id:number){
-        const post =  posts.find((post)=> post.id === +id);
-    if(!post){
-      throw new NotFoundException();
-    }
-    //자주쓰는 Exception
-    // 1. BadRequestException
-    // 2. UnauthorizedException
-    // 3. NotFoundException
-    // 4. ForbiddenException
+    async getPostById(id:number){
+      const post = await this.postsRepository.findOne({
+        where: {
+          id,
+        },
+      })
+      if(!post){
+        throw new NotFoundException();
+      }
+      //자주쓰는 Exception
+      // 1. BadRequestException
+      // 2. UnauthorizedException
+      // 3. NotFoundException
+      // 4. ForbiddenException
 
-    return post;
-    }
-
-
-    createPost(author: string, title: string, content: string){
-        const post : PostModel = {
-            id: posts[posts.length -1].id + 1, 
-            author : author, 
-            title ,
-            content,
-            // key와 value가 같으면 생략해줄 수 있는 문법
-            likeCount : 0 ,
-            commentCount : 0 , 
-          }
-      
-          posts = [
-            ...posts,
-            post
-          ]; 
-      
-          return post;
+      return post;
     }
 
-    updatePost(id: string, author: string, title: string, content: string){
-        const post = posts.find(post => post.id === +id);
+
+    async createPost(author: string, title: string, content: string){
+      // 1) create -> 저장할 객체를 생성한다.
+      // 2) save -> 객체를 저장한다 (create 메서드에서 생성한 객체로)
+      const post = this.postsRepository.create({
+        author,
+        title,
+        content,
+        likeCount: 0,
+        commentCount: 0, 
+      });
+
+      const newPost = await this.postsRepository.save(post);
+      return newPost;
+    }
+
+    async updatePost(postId: number, author: string, title: string, content: string){
+      // save의 기능
+      // 1) 만약 데이터가 존재하지 않는다면 (id 기준으로) 새로 생성한다.
+      // 2) 만약 데이터가 존재한다면 (같은 id의 값이 존재한다면) 존재하던 값을 업데이트 한다.
+
+      const post = await this.postsRepository.findOne({
+        where: {
+          id: postId ,
+        }
+      })
         if(!post){
           throw new NotFoundException();
         }
@@ -96,18 +88,22 @@ export class PostsService {
         if(content){
           post.content = content;
         }
-  
-        posts = posts.map(prevPost => prevPost.id === +id ? post : prevPost);
-  
-        return post;
+
+        const newPost = await this.postsRepository.save(post);
+    
+        return newPost;
     }
 
-    deletePost(id:string )  {
-        const post =  posts.find((post)=> post.id === +id);
+    async deletePost(postId:number )  {
+      const post = this.postsRepository.findOne({
+        where: {
+          id : postId
+        }
+      })
         if(!post){
           throw new NotFoundException();
         }
-        posts = posts.filter(post => post.id !== +id);
-        return id; 
+        await this.postsRepository.delete(postId);
+        return postId; 
     }
 }

@@ -40,7 +40,7 @@ export class PostsController {
 
   @Put(':id')
   putPost(
-    @Param('id') id: string,
+    @Param('id') id: number,
     @Body('author') author?:string, 
     @Body('title') title?: string,
     @Body('content') content?: string, 
@@ -52,7 +52,7 @@ export class PostsController {
   //    id에 해당되는 POST를 삭제한다. 
 
   @Delete(':id')
-  deletePost(@Param('id') id:string){
+  deletePost(@Param('id') id:number){
     return this.postsService.deletePost(id);
   }
 }
